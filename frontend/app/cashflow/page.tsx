@@ -1,10 +1,63 @@
 import { getLatestRun } from '@/lib/db';
-import { PageHeader, StatCard, Card, Badge, EmptyState, AgingBar } from '@/components/ui';
+import { PageHeader, StatCard, Card, Badge, EmptyState, AgingBar, AgingData } from '@/components/ui';
 import { money, num, dateTime, titleCase } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
-const RISK_TONE = { high: 'crit', medium: 'warn', low: 'good' };
+interface CashflowSummary {
+  total_receivable?: number;
+  overdue_total?: number;
+  forecast_next_month?: number;
+  high_risk_customers?: number;
+}
+
+interface Bottleneck {
+  customer?: string;
+  amount?: number;
+  days_overdue?: number;
+  reason?: string;
+}
+
+interface WeekForecast {
+  week?: string;
+  expected_inflow?: number;
+}
+
+interface Forecast {
+  basis?: string;
+  by_week?: WeekForecast[];
+}
+
+interface Customer {
+  name?: string;
+  revenue?: number;
+  avg_days_to_pay?: number;
+  risk_level?: string;
+  flagged?: boolean;
+}
+
+interface CustomerAlert {
+  name?: string;
+  issue?: string;
+}
+
+interface CashflowResult {
+  aging?: AgingData;
+  bottlenecks?: Bottleneck[];
+  forecast?: Forecast;
+  customers?: {
+    top_10?: Customer[];
+    alerts?: CustomerAlert[];
+  };
+}
+
+type BadgeTone = 'good' | 'warn' | 'crit' | 'neutral';
+
+const RISK_TONE: Record<string, BadgeTone> = {
+  high: 'crit',
+  medium: 'warn',
+  low: 'good',
+};
 
 export default async function CashflowPage() {
   let run = null;
@@ -24,22 +77,22 @@ export default async function CashflowPage() {
     );
   }
 
-  const s = run.summary || {};
-  const r = run.result || {};
-  const aging = r.aging || {};
-  const bottlenecks = r.bottlenecks || [];
-  const forecast = r.forecast || {};
-  const byWeek = forecast.by_week || [];
-  const customers = r.customers || {};
-  const top10 = customers.top_10 || [];
-  const alerts = customers.alerts || [];
+  const s = (run.summary ?? {}) as CashflowSummary;
+  const r = (run.result ?? {}) as CashflowResult;
+  const aging: AgingData = r.aging ?? {};
+  const bottlenecks: Bottleneck[] = r.bottlenecks ?? [];
+  const forecast: Forecast = r.forecast ?? {};
+  const byWeek: WeekForecast[] = forecast.by_week ?? [];
+  const customers = r.customers ?? {};
+  const top10: Customer[] = customers.top_10 ?? [];
+  const alerts: CustomerAlert[] = customers.alerts ?? [];
 
   return (
     <>
       <PageHeader
         eyebrow="03 · Cash Flow & Risk"
         title="Cash Flow & Risk"
-        meta={`last run ${dateTime(run.run_at || run.created_at)}`}
+        meta={`last run ${dateTime(run.run_at ?? run.created_at)}`}
       />
 
       <div className="stat-grid">
@@ -61,9 +114,9 @@ export default async function CashflowPage() {
             <tbody>
               {alerts.map((a, i) => (
                 <tr key={i}>
-                  <td>{a.name || '—'}</td>
+                  <td>{a.name ?? '—'}</td>
                   <td>
-                    <Badge tone="crit">{a.issue || 'flagged'}</Badge>
+                    <Badge tone="crit">{a.issue ?? 'flagged'}</Badge>
                   </td>
                 </tr>
               ))}
@@ -92,10 +145,10 @@ export default async function CashflowPage() {
             <tbody>
               {bottlenecks.map((b, i) => (
                 <tr key={i}>
-                  <td>{b.customer || '—'}</td>
+                  <td>{b.customer ?? '—'}</td>
                   <td className="num">{money(b.amount)}</td>
                   <td className="num">{num(b.days_overdue)}</td>
-                  <td className="reason">{b.reason || '—'}</td>
+                  <td className="reason">{b.reason ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -120,7 +173,7 @@ export default async function CashflowPage() {
             <tbody>
               {byWeek.map((w, i) => (
                 <tr key={i}>
-                  <td>{w.week || '—'}</td>
+                  <td>{w.week ?? '—'}</td>
                   <td className="num">{money(w.expected_inflow)}</td>
                 </tr>
               ))}
@@ -148,14 +201,14 @@ export default async function CashflowPage() {
                 <tr key={i}>
                   <td className="num">{i + 1}</td>
                   <td>
-                    {c.name || '—'}
+                    {c.name ?? '—'}
                     {c.flagged ? '  ' : ''}
                     {c.flagged && <Badge tone="crit">flagged</Badge>}
                   </td>
                   <td className="num">{money(c.revenue)}</td>
                   <td className="num">{num(c.avg_days_to_pay)}</td>
                   <td>
-                    <Badge tone={RISK_TONE[c.risk_level] || 'neutral'}>
+                    <Badge tone={RISK_TONE[c.risk_level ?? ''] ?? 'neutral'}>
                       {titleCase(c.risk_level)}
                     </Badge>
                   </td>

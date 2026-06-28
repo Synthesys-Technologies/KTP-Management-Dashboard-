@@ -1,41 +1,54 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { insertRun } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_TASK_TYPES = new Set([
+const ALLOWED_TASK_TYPES = new Set<string>([
   'reconciliation_run',
   'telegram_collection',
   'cashflow_analysis',
 ]);
 
+interface TaskResultBody {
+  task_type: string;
+  client_id?: string;
+  run_at?: string;
+  summary: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
 // POST https://<your-dashboard>/api/task-result
 // Headers: Authorization: Bearer <HERMES_API_KEY>, Content-Type: application/json
-export async function POST(req) {
-  const auth = req.headers.get('authorization') || '';
-  const expected = `Bearer ${process.env.HERMES_API_KEY || ''}`;
+export async function POST(req: NextRequest) {
+  const auth = req.headers.get('authorization') ?? '';
+  const expected = `Bearer ${process.env.HERMES_API_KEY ?? ''}`;
 
   if (!process.env.HERMES_API_KEY || auth !== expected) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body;
+  let body: TaskResultBody | null = null;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: 'Body must be valid JSON' }, { status: 400 });
   }
 
-  const { task_type, client_id, run_at, summary, result } = body || {};
+  const { task_type, client_id, run_at, summary, result } = body ?? ({} as TaskResultBody);
 
   if (!task_type || !ALLOWED_TASK_TYPES.has(task_type)) {
     return NextResponse.json(
-      { ok: false, error: `Missing or unknown task_type. Allowed: ${[...ALLOWED_TASK_TYPES].join(', ')}` },
+      {
+        ok: false,
+        error: `Missing or unknown task_type. Allowed: ${[...ALLOWED_TASK_TYPES].join(', ')}`,
+      },
       { status: 400 }
     );
   }
 
-  const isObject = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
   if (!isObject(summary) || !isObject(result)) {
     return NextResponse.json(
       { ok: false, error: 'summary and result must be JSON objects' },

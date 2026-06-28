@@ -3,7 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const NAV = [
+interface NavItem {
+  href: string;
+  label: string;
+  code: string;
+}
+
+const NAV: NavItem[] = [
   { href: '/', label: 'Overview', code: '00' },
   { href: '/reconciliation', label: 'Bank Reconciliation', code: '01' },
   { href: '/telegram', label: 'Telegram Capture', code: '02' },

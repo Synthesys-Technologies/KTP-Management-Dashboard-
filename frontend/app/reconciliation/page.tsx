@@ -4,7 +4,26 @@ import { money, num, pct, dateTime, titleCase } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
-const STATUS_TONE = {
+interface ReconciliationSummary {
+  transactions_processed?: number;
+  matched_count?: number;
+  unmatched_count?: number;
+  total_amount?: number;
+}
+
+interface ReconciliationException {
+  date?: string;
+  amount?: number;
+  counterparty?: string;
+  category?: string;
+  reason?: string;
+  confidence?: number;
+  status?: string;
+}
+
+type BadgeTone = 'good' | 'warn' | 'crit' | 'neutral';
+
+const STATUS_TONE: Record<string, BadgeTone> = {
   missing_from_erp: 'crit',
   not_in_bank: 'warn',
   unmatched: 'warn',
@@ -30,15 +49,16 @@ export default async function ReconciliationPage() {
     );
   }
 
-  const s = run.summary || {};
-  const exceptions = (run.result && run.result.exceptions) || [];
+  const s = (run.summary ?? {}) as ReconciliationSummary;
+  const exceptions: ReconciliationException[] =
+    ((run.result as { exceptions?: ReconciliationException[] })?.exceptions) ?? [];
 
   return (
     <>
       <PageHeader
         eyebrow="01 · Bank Reconciliation"
         title="Bank Reconciliation"
-        meta={`${run.client_id || 'all clients'} · last run ${dateTime(run.run_at || run.created_at)}`}
+        meta={`${run.client_id ?? 'all clients'} · last run ${dateTime(run.run_at ?? run.created_at)}`}
       />
 
       <div className="stat-grid">
@@ -67,14 +87,14 @@ export default async function ReconciliationPage() {
             <tbody>
               {exceptions.map((e, i) => (
                 <tr key={i}>
-                  <td>{e.date || '—'}</td>
+                  <td>{e.date ?? '—'}</td>
                   <td className="num">{money(e.amount)}</td>
-                  <td>{e.counterparty || '—'}</td>
+                  <td>{e.counterparty ?? '—'}</td>
                   <td>{titleCase(e.category)}</td>
-                  <td className="reason">{e.reason || '—'}</td>
+                  <td className="reason">{e.reason ?? '—'}</td>
                   <td className="num">{e.confidence != null ? pct(e.confidence) : '—'}</td>
                   <td>
-                    <Badge tone={STATUS_TONE[e.status] || 'neutral'}>
+                    <Badge tone={STATUS_TONE[e.status ?? ''] ?? 'neutral'}>
                       {titleCase(e.status)}
                     </Badge>
                   </td>

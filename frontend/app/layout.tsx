@@ -1,12 +1,13 @@
 import './globals.css';
 import Nav from '@/components/Nav';
+import { Metadata } from 'next';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Hermes Ops',
   description: 'Agent task results — reconciliation, capture, cash flow',
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>

@@ -4,6 +4,21 @@ import { money, num, dateTime, titleCase } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
+interface TelegramSummary {
+  records_collected?: number;
+  by_type?: { invoice?: number; expense?: number };
+  latest_at?: string;
+}
+
+interface TelegramRecord {
+  captured_at?: string;
+  type?: string;
+  amount?: number;
+  vendor?: string;
+  reference?: string;
+  raw_text?: string;
+}
+
 export default async function TelegramPage() {
   let run = null;
   try {
@@ -22,16 +37,17 @@ export default async function TelegramPage() {
     );
   }
 
-  const s = run.summary || {};
-  const byType = s.by_type || {};
-  const records = (run.result && run.result.records) || [];
+  const s = (run.summary ?? {}) as TelegramSummary;
+  const byType = s.by_type ?? {};
+  const records: TelegramRecord[] =
+    ((run.result as { records?: TelegramRecord[] })?.records) ?? [];
 
   return (
     <>
       <PageHeader
         eyebrow="02 · Telegram Capture"
         title="Telegram Capture"
-        meta={`last sync ${dateTime(s.latest_at || run.created_at)}`}
+        meta={`last sync ${dateTime(s.latest_at ?? run.created_at)}`}
       />
 
       <div className="stat-grid">
@@ -64,9 +80,9 @@ export default async function TelegramPage() {
                     <Badge tone="neutral">{titleCase(r.type)}</Badge>
                   </td>
                   <td className="num">{money(r.amount)}</td>
-                  <td>{r.vendor || '—'}</td>
-                  <td>{r.reference || '—'}</td>
-                  <td className="raw">{r.raw_text || '—'}</td>
+                  <td>{r.vendor ?? '—'}</td>
+                  <td>{r.reference ?? '—'}</td>
+                  <td className="raw">{r.raw_text ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
